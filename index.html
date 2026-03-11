@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<title>THYNK AI</title>
+<style>
+body { margin:0; font-family:Arial; background:#fff; color:black; display:flex; height:100vh; }
+#history { width:220px; background:#f9f9f9; padding:10px; display:none; overflow-y:auto; box-shadow:2px 0 5px rgba(0,0,0,0.2); }
+#newChat { background:#ddd; padding:10px; cursor:pointer; text-align:center; margin-bottom:10px; border-radius:6px; font-weight:bold; }
+#historyTitle { margin-top:20px; font-weight:bold; text-align:center; }
+#historyList div { background:#eee; margin:5px 0; padding:5px; border-radius:4px; }
+#chat { flex:1; text-align:left; position:relative; display:flex; flex-direction:column; justify-content:flex-start; padding:20px; overflow-y:auto; }
+#intro { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center; }
+#title { font-size:50px; letter-spacing:4px; color:black; }
+#play { display:none; margin-top:20px; padding:15px 40px; font-size:22px; cursor:pointer; background:#222; color:white; border:none; border-radius:8px; }
+#topBar { display:flex; justify-content:flex-start; align-items:center; margin-top:20px; gap:10px; }
+#search { padding:10px; font-size:18px; flex:1; border-radius:6px; border:1px solid #ccc; }
+#addBtn { padding:10px 15px; background:#222; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; font-size:18px; position:relative; }
+#menu { display:none; position:absolute; top:40px; left:0; background:#eee; border:1px solid #ccc; border-radius:6px; width:150px; z-index:100; }
+#menu div { padding:8px; cursor:pointer; }
+#menu div:hover { background:#ddd; }
+.message-block { margin-bottom:15px; }
+.question { font-weight:bold; margin-bottom:5px; }
+.answer { background:#eee; color:black; padding:8px 12px; border-radius:8px; max-width:80%; white-space:pre-wrap; }
+</style>
+</head>
+<body>
+
+<div id="history">
+  <div id="newChat" onclick="newChat()">+ Yeni Chat</div>
+  <div id="historyTitle">Tarixçə</div>
+  <div id="historyList"></div>
+</div>
+
+<div id="chat">
+  <div id="intro">
+    <div id="title">THYNK AI</div>
+    <button id="play" onclick="start()">PLAY</button>
+  </div>
+
+  <div id="searchArea" style="display:none;">
+    <div id="topBar">
+      <input id="search" placeholder="Sual ver..." onkeydown="check(event)">
+      <div id="addBtn" onclick="toggleMenu()">+</div>
+      <div id="menu">
+        <div onclick="sendFile()">Fayl göndər</div>
+        <div onclick="startVoice()">Səsli danışıq</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="chatMessages"></div>
+</div>
+
+<input type="file" id="fileInput" style="display:none;" multiple>
+
+<script>
+
+let brain = [
+
+{question:"salam", answer:"Salam! Necəsən?"},
+{question:"sabahın xeyir", answer:"Səhərin xeyir!"},
+{question:"axşamın xeyir", answer:"Axşamın xeyir!"},
+{question:"necəsən?", answer:"Mən yaxşıyam, sən necəsən?"},
+{question:"nə var nə yox?", answer:"Hər şey yaxşıdır."},
+
+{question:"tarixin atası kimdir?", answer:"Herodotdur."},
+{question:"qədim misir fironu kim idi?", answer:"Tutankhamon."},
+{question:"amerikanı kim kəşf edib?", answer:"Kristofor Kolumb."},
+{question:"isaac newton nə kəşf edib?", answer:"Qravitasiya qanunu."},
+{question:"albert einstein nə ilə məşhurdur?", answer:"Nisbilik nəzəriyyəsi."},
+
+{question:"2 + 2 neçədir?", answer:"4"},
+{question:"10 - 3 neçədir?", answer:"7"},
+{question:"5 * 6 neçədir?", answer:"30"},
+{question:"12 / 4 neçədir?", answer:"3"},
+{question:"7 + 8 neçədir?", answer:"15"},
+
+{question:"azərbaycanın paytaxtı nədir?", answer:"Bakı"},
+{question:"çin paytaxtı hansıdır?", answer:"Pekin"},
+{question:"ispaniyanın paytaxtı hansıdır?", answer:"Madrid"},
+{question:"hindistanın paytaxtı haradır?", answer:"Yeni Dehli"},
+{question:"böyük britaniyanın paytaxtı haradır?", answer:"London"}
+
+];
+
+
+// PREMIUM SISTEMI
+
+let imageLimit = 3;
+let usedImages = localStorage.getItem("usedImages");
+let lastTime = localStorage.getItem("lastTime");
+
+if(!usedImages){
+usedImages = 0;
+}else{
+usedImages = parseInt(usedImages);
+}
+
+function canSendImage(){
+
+let now = Date.now();
+
+if(lastTime){
+let diff = now - lastTime;
+
+if(diff > 3600000){
+usedImages = 0;
+localStorage.setItem("usedImages",0);
+}
+}
+
+if(usedImages >= imageLimit){
+alert("3 şəkil göndərdin. Premium almalısan və ya 1 saat gözlə.");
+return false;
+}
+
+usedImages++;
+localStorage.setItem("usedImages",usedImages);
+localStorage.setItem("lastTime",now);
+
+return true;
+}
+
+
+setTimeout(()=>{ document.getElementById("play").style.display="block"; },3000);
+
+function start(){
+  document.getElementById("history").style.display="block";
+  document.getElementById("intro").style.display="none";
+  document.getElementById("searchArea").style.display="flex";
+}
+
+function getAIResponse(question){
+  let q = question.trim().toLowerCase();
+  for(let i=0;i<brain.length;i++){
+    let bq = brain[i].question.trim().toLowerCase();
+    if(q.includes(bq)) return brain[i].answer;
+  }
+  return "Bu suala cavab hələ AI-də yoxdur.";
+}
+
+function insertToChat(question, answer){
+  let chat = document.getElementById("chatMessages");
+  let block = document.createElement("div");
+  block.classList.add("message-block");
+
+  let qDiv = document.createElement("div");
+  qDiv.classList.add("question");
+  qDiv.innerText = "Sual: " + question;
+
+  let aDiv = document.createElement("div");
+  aDiv.classList.add("answer");
+  aDiv.innerText = "Cavab: " + answer;
+
+  block.appendChild(qDiv);
+  block.appendChild(aDiv);
+  chat.appendChild(block);
+
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function check(e){
+  if(e.key==="Enter"){
+    let text = document.getElementById("search").value.trim();
+    if(!text) return;
+
+    let aiAnswer = getAIResponse(text);
+    insertToChat(text, aiAnswer);
+
+    let history = document.getElementById("historyList");
+    let divHistory = document.createElement("div");
+    divHistory.innerText = text;
+
+    history.appendChild(divHistory);
+
+    document.getElementById("search").value="";
+  }
+}
+
+function newChat(){
+  document.getElementById("historyList").innerHTML="";
+  document.getElementById("chatMessages").innerHTML="";
+}
+
+function sendFile(){
+
+if(!canSendImage()) return;
+
+document.getElementById("fileInput").click();
+
+}
+
+function toggleMenu(){
+  let menu = document.getElementById("menu");
+  menu.style.display = (menu.style.display==="block") ? "none" : "block";
+}
+
+function startVoice(){
+  alert("Səsli danışıq funksiyası işləyir.");
+}
+
+</script>
+</body>
+</html>
